@@ -32,6 +32,10 @@ y_pred = classifier.predict(X_test)
 
 # 评估模型，混淆矩阵
 cm = confusion_matrix(y_test, y_pred)
+# 可视化混淆矩阵
+plt.matshow(cm)
+plt.colorbar()
+plt.show()
 
 # 可视化
 X_set, y_set = X_train, y_train
@@ -56,7 +60,6 @@ plt. xlabel(' Age')
 plt. ylabel(' Estimated Salary')
 plt. legend()
 plt. show()
-
 
 X_set,y_set=X_test,y_test
 X1,X2=np. meshgrid(np. arange(start=X_set[:,0].min()-1, stop=X_set[:, 0].max()+1, step=0.01),
