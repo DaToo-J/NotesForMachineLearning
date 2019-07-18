@@ -1,6 +1,8 @@
 '''
 1. 使用随机梯度下降学习算法
-2. 添加了一些：交叉熵代价函数、正则化、更好地w初始化
+2. 添加了一些cost func：QuadraticCost 和交叉熵代价函数
+3. 添加了：正则化、更好地w初始化
+4. 可以计算每个epoch的准确率，也可以设置early_stopping_n
 '''
 import json
 import random
@@ -16,13 +18,21 @@ def sigmoid_prime(z):
     # 对 sigmoid 求导
     return sigmoid(z)*(1-sigmoid(z))
 
-
 def vectorized_result(j):
     # 输入数字j，返回其 onehot 数组
     e = np.zeros((10,1))
     e[j] = 1.0
     return e
 
+def load(filename):
+    f = open(filename, 'r')
+    data = json.load(f)
+    f.close()
+    cost = getattr(sys.modules[__name__], data["cost"])
+    net = Network(data["size"], cost=cost)
+    net.weights = [np.array(w) for w in data["weights"]]
+    net.biases = [np.array(b) for b in data["biases"]]
+    return net
 # -------------------------------------------------------------------
 # cost functions
 class QuadraticCost():
@@ -116,6 +126,10 @@ class Network():
                 print("Accuracy on evaluation data: {} / {}".format(self.accuracy(evaluation_data), n_data))
 
             # ---------------------------------------------------------
+            # early_stopping_n ：如果acc不再更新 early_stopping_n 次，则跳出循环
+            # accuracy ：每个epoch的准确率
+            # best_accuracy：最好准确率阈值
+            # no_accuracy_change：记录有多少次没有更新accuracy
             if early_stopping_n > 0:
                 if accuracy > best_accuracy:
                     best_accuracy = accuracy
@@ -149,10 +163,29 @@ class Network():
         self.biases = [b-(eta/len(mini_batch))*nb for b, nb in zip(self.biases, nabla_b)]
 
     def backprop(self, x, y):
+        nabla_b = [np.zeros(b.shape) for b in self.biases]
+        nabla_w = [np.zeros(w.shape) for w in self.weights]
         activation = x
         activations = [x]
+        zs = []
 
+        for b,w in zip(self.biases, self.weights):
+            z = np.dot(w, activation) + b
+            zs.append(z)
+            activation = sigmoid(z)
+            activations.append(activation)
 
+        delta = (self.cost).delta(zs[-1], activations[-1], y)
+        nabla_b[-1] = delta
+        nabla_w[-1] = np.dot(delta, activations[-2].transpose())
+
+        for l in range(2, self.layers):
+            z = zs[-l]
+            sp = sigmoid_prime(z)
+            delta = np.dot(self.weights[-l+1].transpose(), delta) * sp
+            nabla_b[-l] = delta
+            nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
+        return (nabla_b, nabla_w)
 
     def total_cost(self, data, lmbda, convert=False):
         # 返回 total cost
@@ -182,3 +215,20 @@ class Network():
         result_accuracy = sum(int(x==y) for (x,y) in results)
         return result_accuracy
 
+    def save(self, filename):
+        data = {"sizes":self.sizes,
+                "weights": [w.tolist() for w in self.weights],
+                "biases":[b.tolist() for b in self.biases],
+                "cost":str(self.cost.__name__)}
+        f = open(filename, 'w')
+        json.dump(data, f)
+        f.close()
+
+if __name__ == "__main__":
+    import mnist_loader
+    training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
+    training_data = list(training_data)
+    sizes = [784, 30, 10]
+    nw = Network(sizes, cost=CrossEntropyCost)
+    nw.SGD(training_data,30,10,0.1, lmbda=5.0, evaluation_data=validation_data, monitor_evaluation_accuracy=True)
+    nw.save("./tmp/network2.json")
