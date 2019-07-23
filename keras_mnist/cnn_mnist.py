@@ -66,6 +66,7 @@ def build_model():
     model.add(MaxPooling2D(pool_size=(2,2)))
     model.add(Conv2D(filters=64, kernel_size=(3,3), activation='relu', padding='same'))
     model.add(MaxPooling2D(pool_size=(2,2)))        # output：(None, 3, 3, 64)
+    # model.add(Dropout(0.25))              # 也可以 Dropout 一下
     model.add(Flatten())
         # output：(None, 576)；
         # Flatten()：将输入“压平”，多维输入一维化。常用在卷积层到全连接层的过度
@@ -84,37 +85,16 @@ def build_model():
 model = build_model()
 print(model.summary())
 
-# _________________________________________________________________
-# Layer (type)                 Output Shape              Param #
-# =================================================================
-# conv2d_1 (Conv2D)            (None, 28, 28, 32)        320                  = (kernel size * kernel size * input channels * filters + filters)    = 3 * 3 * 1 * 32 + 32
-# _________________________________________________________________
-# max_pooling2d_1 (MaxPooling2 (None, 14, 14, 32)        0
-# _________________________________________________________________
-# conv2d_2 (Conv2D)            (None, 14, 14, 64)        18496
-# _________________________________________________________________
-# max_pooling2d_2 (MaxPooling2 (None, 7, 7, 64)          0
-# _________________________________________________________________
-# conv2d_3 (Conv2D)            (None, 7, 7, 64)          36928
-# _________________________________________________________________
-# max_pooling2d_3 (MaxPooling2 (None, 3, 3, 64)          0
-# _________________________________________________________________
-# flatten_1 (Flatten)          (None, 576)               0                  = 3 * 3 * 64
-# _________________________________________________________________
-# dense_1 (Dense)              (None, 128)               73856              = (input neurons + 1) * dense neurons   = (577 + 1) * 128
-# _________________________________________________________________
-# dense_2 (Dense)              (None, 10)                1290
-# =================================================================
-# Total params: 130,890
-# Trainable params: 130,890
-# Non-trainable params: 0
-
 
 # -----------------------------------------------   Training model ---------------------------------------
-results = model.fit(train_data2, train_labels_cat2, epochs=15, batch_size=64, validation_data=(val_data, val_labels_cat))
+results = model.fit(train_data2, train_labels_cat2, epochs=10, batch_size=64, validation_data=(val_data, val_labels_cat))
     # fit()：会返回一个 ‘history’字典，keys() = ['acc','loss', 'val_acc', 'val_loss']，values() is a list with epochs elements
+model.save('save/my_cnn_model.h5')
+
 
 # -----------------------------------------------   Evaluating model ---------------------------------------
+# from keras.models import load_model
+# model = load_model('save/my_cnn_model.h5')
 test_loss, test_accuracy = model.evaluate(test_data, test_labels_cat, batch_size=64)
 print('Test loss: %.4f accuracy: %.4f' % (test_loss, test_accuracy))
 
@@ -126,5 +106,3 @@ first20_true = np.argmax(test_labels_cat,axis=1)[:25]
 print(first20_preds)
 print(first20_true)
 
-
-# https://medium.com/@mjbhobe/mnist-digits-classification-with-keras-ed6c2374bd0e
